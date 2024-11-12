@@ -13,7 +13,7 @@ class ControllerClass {
   async validateUser(user: UserRequestBody, res: Response) {
     try {
       let { name, password, emailId } = user;
-      let errors :string[]= [];
+      let errors: string[] = [];
       if (!name || name.trim() == "") {
         errors.push("invalid username!! please provide valid one");
       }
@@ -43,7 +43,6 @@ class ControllerClass {
     } catch (err: any) {
       console.log("error in validateUser", err.message);
       res.status(500).send(err.message);
-      
     }
   }
 
@@ -69,6 +68,41 @@ class ControllerClass {
     } catch (err: any) {
       console.log("error in charcontroller", err.message);
       res.status(500).send(err.message);
+    }
+  }
+
+  async checkUserExist(req: Request, res: Response) {
+    try {
+      let checkUser = await this.RespoInstance.getUser(req.body.emailId);
+      if (!checkUser) {
+        res.status(400).send("user is not registered");
+        return;
+      }
+      let comparePass: boolean = await bcrypt.compare(
+        req.body.password,
+        checkUser.password
+      );
+      if (comparePass) {
+        let token: string = await util.createToken(checkUser);
+        res.status(200).send({ user: checkUser, token });
+        return;
+      } else {
+        res.status(400).send("invalid password for the user");
+      }
+    } catch (error) {
+      console.error(error, "in checkUserExist");
+    }
+  }
+
+  async verifyStatus(req: Request, res: Response) {
+    const { status } = req.params;
+    if (!status ||(status != "completed" && status != "pending" && status != "asigned")) {
+      res.status(400).send("invalid status for the request");
+      return;
+    } else {
+      const getData=await this.RespoInstance.getMessages(status);
+      res.status(200).send(getData)
+      return;
     }
   }
 }

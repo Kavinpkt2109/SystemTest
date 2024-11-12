@@ -5,6 +5,9 @@ import controller from "./controller/controller";
 import repo from "./Repository/respository";
 import utils from "./utils/util";
 import multer = require("multer");
+import { verify } from "jsonwebtoken";
+import jwt from "jsonwebtoken";
+
 dotenv.config();
 const app: Express = express();
 app.use(express.json());
@@ -24,18 +27,31 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 const repoInstance = new repo();
 const controllerInstance = new controller(repoInstance);
 
+//sign up
 app.post("/registerUser", async (req: Request, res: Response) => {
   await controllerInstance.validateUser(req.body, res);
 });
+//sign in
+app.post("/signin", async (req: Request, res: Response) => {
+  await controllerInstance.checkUserExist(req, res);
+});
 
+//create msg
 const upload = multer();
-app.post("/postChat", upload.single("excelFile"), async (req, res) => {
-  let check = await utils.verifyUser(req);
-  if (check) {
-   await controllerInstance.chatController(req,res);
+function middleWare() {
+  upload.single("excelFile");
+  verifyToken;
+}
+app.post("/postChat", middleWare, async (req, res) => {
+  await controllerInstance.chatController(req, res);
+});
+const verifyToken = async function (req: Request,res: Response, next: NextFunction) {
+  let token = req.headers["authorization"]?.split(" ")[1];
+  let verify = jwt.verify(token!, process.env.SECRETKEY!);
+  if (req.body.emailId != verify) {
+    next();
   }
-  else{
-    res.status(401).send("Invalid token or password")
-    return;
-  }
+};
+app.get("/getMessage/:status", verifyToken, async (req, res) => {
+  await controllerInstance.verifyStatus(req, res);
 });
